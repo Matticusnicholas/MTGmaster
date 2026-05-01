@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.env
+.env.*
+.DS_Store
+Thumbs.db
+
+# generated data
+data/raw/
+data/chroma/
+
+# user notes (keep the README placeholder)
+data/strategy/*
+!data/strategy/README.md
+
+# editor
+.vscode/
+.idea/
+*.swp

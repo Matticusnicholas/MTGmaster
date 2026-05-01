@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MTGMaster</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>MTGMaster</h1>
+    <div class="controls">
+      <label>Model
+        <select id="model"></select>
+      </label>
+      <label class="toggle"><input type="checkbox" id="rag" checked /> Use RAG</label>
+      <span id="status" class="status">connecting...</span>
+    </div>
+  </header>
+  <main>
+    <section id="messages" aria-live="polite"></section>
+    <aside id="citations" hidden>
+      <h3>Sources for last answer</h3>
+      <ul id="cite-list"></ul>
+    </aside>
+  </main>
+  <form id="form">
+    <textarea id="input" rows="3" placeholder="Ask anything about Magic: rules, cards, interactions, deckbuilding..."></textarea>
+    <button type="submit">Send</button>
+  </form>
+  <script src="/app.js"></script>
+</body>
+</html>
