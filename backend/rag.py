@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import chromadb
 import httpx
@@ -46,27 +46,43 @@ def embed_one(text: str) -> List[float]:
         return r.json()["embedding"]
 
 
+def _query(col, qv: List[float], k: int, where: Optional[dict]):
+    kwargs: dict = {"query_embeddings": [qv], "n_results": k}
+    if where:
+        kwargs["where"] = where
+    try:
+        return col.query(**kwargs)
+    except Exception as e:
+        if where:
+            log.warning("Filtered query failed (%s); retrying without filter", e)
+            return col.query(query_embeddings=[qv], n_results=k)
+        raise
+
+
 def retrieve(
     query: str,
     k_cards: int = 8,
     k_rules: int = 6,
     k_strategy: int = 4,
+    standard_only: bool = False,
 ) -> List[Retrieved]:
     client = get_client()
     qv = embed_one(query)
     out: List[Retrieved] = []
+    # Filters apply only to the cards collection.
+    cards_where = {"standard_legal": True} if standard_only else None
     plan = [
-        (CHROMA_RULES, k_rules, "RULES"),
-        (CHROMA_CARDS, k_cards, "CARD"),
-        (CHROMA_STRATEGY, k_strategy, "STRATEGY"),
+        (CHROMA_RULES, k_rules, "RULES", None),
+        (CHROMA_CARDS, k_cards, "CARD", cards_where),
+        (CHROMA_STRATEGY, k_strategy, "STRATEGY", None),
     ]
-    for cname, k, source in plan:
+    for cname, k, source, where in plan:
         try:
             col = client.get_collection(cname)
         except Exception:
             continue
         try:
-            res = col.query(query_embeddings=[qv], n_results=k)
+            res = _query(col, qv, k, where)
         except Exception as e:
             log.warning("query failed on %s: %s", cname, e)
             continue

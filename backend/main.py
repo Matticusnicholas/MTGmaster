@@ -20,6 +20,17 @@ log = logging.getLogger(__name__)
 ollama = OllamaManager()
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
+# Formats surfaced in citations and the UI badges.
+DISPLAY_FORMATS = (
+    "standard",
+    "pioneer",
+    "modern",
+    "legacy",
+    "vintage",
+    "commander",
+    "pauper",
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,6 +64,7 @@ class ChatRequest(BaseModel):
     model: str
     messages: List[ChatMessage]
     use_rag: bool = True
+    standard_only: bool = False
     k_cards: int = 8
     k_rules: int = 6
     k_strategy: int = 4
@@ -78,6 +90,35 @@ def models():
     }
 
 
+def _citation_for(h) -> dict:
+    base = {"source": h.source, "score": round(h.score, 3)}
+    if h.source == "CARD":
+        meta = h.metadata
+        formats = {}
+        for fmt in DISPLAY_FORMATS:
+            status = meta.get(f"status_{fmt}")
+            if status is None:
+                # Older indexes only carry standard_legal bool.
+                if fmt == "standard":
+                    status = "legal" if meta.get("standard_legal") else "not_legal"
+                else:
+                    continue
+            formats[fmt] = status
+        base.update(
+            {
+                "label": meta.get("name", ""),
+                "set": (meta.get("set", "") or "").upper(),
+                "formats": formats,
+                "standard_legal": bool(meta.get("standard_legal")),
+            }
+        )
+    elif h.source == "RULES":
+        base["label"] = "CR " + h.metadata.get("rule_number", "")
+    else:
+        base["label"] = h.metadata.get("title", "")
+    return base
+
+
 @app.post("/api/chat")
 def chat(req: ChatRequest):
     if not req.messages:
@@ -94,24 +135,19 @@ def chat(req: ChatRequest):
                 k_cards=req.k_cards,
                 k_rules=req.k_rules,
                 k_strategy=req.k_strategy,
+                standard_only=req.standard_only,
             )
             context_block = format_context(hits)
-            citations = [
-                {
-                    "source": h.source,
-                    "label": (
-                        h.metadata.get("name")
-                        or h.metadata.get("rule_number")
-                        or h.metadata.get("title", "")
-                    ),
-                    "score": round(h.score, 3),
-                }
-                for h in hits[:12]
-            ]
+            citations = [_citation_for(h) for h in hits[:12]]
         except Exception as e:
             log.warning("RAG retrieval failed: %s", e)
 
     sys_msg = SYSTEM_PROMPT
+    if req.standard_only:
+        sys_msg += (
+            "\n\nThe user has restricted retrieval to Standard-legal cards. "
+            "If a card not in the [CARD] context is needed for an answer, say so."
+        )
     if context_block:
         sys_msg += (
             "\n\n=== RETRIEVED CONTEXT (use this; cite [RULES] / [CARD] / [STRATEGY]) ===\n"

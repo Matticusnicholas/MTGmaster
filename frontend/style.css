@@ -10,7 +10,7 @@ header h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.05em; color: #f7c548
 .status.ok { color: #7ec97e; }
 .status.warn { color: #f7c548; }
 .status.err { color: #ff6b6b; }
-main { flex: 1; display: grid; grid-template-columns: 1fr 280px; min-height: 0; }
+main { flex: 1; display: grid; grid-template-columns: 1fr 320px; min-height: 0; }
 #messages { padding: 1rem; overflow-y: auto; }
 .msg { padding: 0.6rem 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; max-width: 80ch; white-space: pre-wrap; line-height: 1.4; }
 .msg.user { background: #23344a; }
@@ -18,12 +18,20 @@ main { flex: 1; display: grid; grid-template-columns: 1fr 280px; min-height: 0; 
 #citations { border-left: 1px solid #333; padding: 1rem; overflow-y: auto; background: #0d0d0d; }
 #citations h3 { margin: 0 0 0.5rem; font-size: 0.9rem; color: #f7c548; }
 #cite-list { list-style: none; padding: 0; margin: 0; font-size: 0.8rem; }
-#cite-list li { padding: 0.3rem 0; border-bottom: 1px dotted #222; }
+#cite-list li { padding: 0.4rem 0; border-bottom: 1px dotted #222; }
 .badge { display: inline-block; font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; margin-right: 0.3rem; background: #333; }
 .badge.rules { background: #3a2a55; }
 .badge.card { background: #234a34; }
 .badge.strategy { background: #4a3823; }
+.set { color: #888; font-size: 0.75rem; }
 .score { color: #666; font-size: 0.7rem; margin-left: 0.3rem; }
+.pills { margin-top: 0.25rem; display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.std-row { margin-top: 0.2rem; font-size: 0.7rem; color: #aaa; display: flex; align-items: center; gap: 0.3rem; }
+.fmt-pill { display: inline-block; font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; font-weight: 600; letter-spacing: 0.04em; }
+.fmt-pill.fmt-legal { background: #1f5e2e; color: #c8f0c8; }
+.fmt-pill.fmt-not_legal { background: #3a2020; color: #d8a0a0; }
+.fmt-pill.fmt-banned { background: #6e1212; color: #ffd0d0; }
+.fmt-pill.fmt-restricted { background: #6e5212; color: #ffe6a0; }
 form { display: flex; gap: 0.5rem; padding: 0.75rem; border-top: 1px solid #333; }
 textarea { flex: 1; background: #1c1c1c; color: #eee; border: 1px solid #333; border-radius: 4px; padding: 0.5rem; resize: vertical; font-family: inherit; }
 button { background: #f7c548; color: #111; border: 0; padding: 0 1rem; border-radius: 4px; font-weight: 600; cursor: pointer; }

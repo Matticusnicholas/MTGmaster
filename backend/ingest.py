@@ -28,6 +28,24 @@ log = logging.getLogger(__name__)
 UA = "MTGMaster/1.0 (+https://github.com/matticusnicholas/mtgmaster)"
 SKIP_LAYOUTS = {"art_series", "token", "double_faced_token", "emblem"}
 
+# Formats we explicitly designate. Order is preserved in the card text so
+# the LLM sees Standard first.
+FORMATS = (
+    "standard",
+    "pioneer",
+    "modern",
+    "legacy",
+    "vintage",
+    "commander",
+    "pauper",
+    "explorer",
+    "historic",
+    "brawl",
+    "alchemy",
+    "timeless",
+    "oathbreaker",
+)
+
 
 def http_get_json(url: str) -> dict:
     with httpx.Client(
@@ -104,6 +122,24 @@ def fetch_comp_rules() -> Path:
     )
 
 
+def format_legality_lines(legalities: dict) -> str:
+    """Human-readable per-format legality string used in card document text.
+
+    Produces lines like:
+        Formats:
+          Standard: legal
+          Pioneer:  legal
+          Modern:   not_legal
+          Legacy:   banned
+    """
+    rows = []
+    width = max(len(f) for f in FORMATS) + 1
+    for fmt in FORMATS:
+        status = legalities.get(fmt, "not_legal")
+        rows.append(f"  {fmt.capitalize().ljust(width)} {status}")
+    return "Formats:\n" + "\n".join(rows)
+
+
 def card_to_text(card: dict) -> str:
     name = card.get("name", "")
     cost = card.get("mana_cost", "")
@@ -115,11 +151,6 @@ def card_to_text(card: dict) -> str:
     loyalty = f"\nLoyalty: {card['loyalty']}" if "loyalty" in card else ""
     keywords = ", ".join(card.get("keywords") or [])
     legalities = card.get("legalities") or {}
-    legal_str = ", ".join(
-        f"{fmt}={v}"
-        for fmt, v in legalities.items()
-        if v in ("legal", "restricted")
-    )
     faces = ""
     if "card_faces" in card:
         faces_lines = []
@@ -132,16 +163,16 @@ def card_to_text(card: dict) -> str:
                     o=f.get("oracle_text", ""),
                 )
             )
-        faces = "\n".join(faces_lines)
+        faces = "\n" + "\n".join(faces_lines)
     return (
         f"{name} {cost}\n{typ}\n{oracle}{pt}{loyalty}\n"
-        f"Keywords: {keywords}\nLegal in: {legal_str}\n{faces}"
+        f"Keywords: {keywords}\n{format_legality_lines(legalities)}{faces}"
     ).strip()
 
 
 def card_meta(card: dict) -> dict:
     legalities = card.get("legalities") or {}
-    return {
+    meta: dict = {
         "name": card.get("name", ""),
         "set": card.get("set", ""),
         "type_line": card.get("type_line", ""),
@@ -149,8 +180,14 @@ def card_meta(card: dict) -> dict:
         "rarity": card.get("rarity", ""),
         "oracle_id": card.get("oracle_id", ""),
         "scryfall_uri": card.get("scryfall_uri", ""),
-        "standard_legal": legalities.get("standard") == "legal",
     }
+    for fmt in FORMATS:
+        status = legalities.get(fmt, "not_legal")
+        meta[f"legal_{fmt}"] = status == "legal"
+        meta[f"status_{fmt}"] = status  # legal | not_legal | banned | restricted
+    # Backward-compat field used by older indexes and the Standard-only filter.
+    meta["standard_legal"] = meta["legal_standard"]
+    return meta
 
 
 def iter_cards(path: Path) -> Iterable[dict]:
@@ -177,7 +214,6 @@ def parse_rules(path: Path) -> List[Tuple[str, str]]:
         if len(body) < 60:  # skip TOC-style stub entries
             continue
         raw.append((m.group(1), body))
-    # dedupe by rule number, keeping the longest body
     by_id: dict = {}
     for n, body in raw:
         if n not in by_id or len(body) > len(by_id[n]):

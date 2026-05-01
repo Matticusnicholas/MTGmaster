@@ -3,12 +3,23 @@ const messagesEl = $("#messages");
 const modelSel = $("#model");
 const statusEl = $("#status");
 const ragEl = $("#rag");
+const stdEl = $("#standard-only");
 const formEl = $("#form");
 const inputEl = $("#input");
 const citeListEl = $("#cite-list");
 const citeBox = $("#citations");
 
 const history = [];
+
+const FORMAT_ABBR = {
+  standard: "STD",
+  pioneer: "PIO",
+  modern: "MOD",
+  legacy: "LEG",
+  vintage: "VIN",
+  commander: "CMD",
+  pauper: "PAU",
+};
 
 async function refreshModels() {
   try {
@@ -55,6 +66,14 @@ function addBubble(role, text) {
   return div;
 }
 
+function formatPill(fmt, status) {
+  const span = document.createElement("span");
+  span.className = "fmt-pill fmt-" + status;
+  span.textContent = FORMAT_ABBR[fmt] || fmt.slice(0, 3).toUpperCase();
+  span.title = fmt + ": " + status;
+  return span;
+}
+
 function renderCitations(items) {
   citeListEl.innerHTML = "";
   if (!items || !items.length) {
@@ -67,7 +86,31 @@ function renderCitations(items) {
     const badge = document.createElement("span");
     badge.className = "badge " + c.source.toLowerCase();
     badge.textContent = c.source;
-    li.append(badge, " " + (c.label || ""));
+    li.append(badge, " ", c.label || "");
+    if (c.source === "CARD" && c.set) {
+      const setSpan = document.createElement("span");
+      setSpan.className = "set";
+      setSpan.textContent = " (" + c.set + ")";
+      li.append(setSpan);
+    }
+    if (c.source === "CARD" && c.formats) {
+      const pills = document.createElement("div");
+      pills.className = "pills";
+      for (const [fmt, status] of Object.entries(c.formats)) {
+        if (status === "not_legal") continue; // only show formats that designate something
+        pills.append(formatPill(fmt, status));
+      }
+      if (pills.childElementCount) li.append(pills);
+      // Always show an explicit Standard pill so users see legal/not-legal at a glance.
+      const stdStatus = c.formats.standard || (c.standard_legal ? "legal" : "not_legal");
+      const stdRow = document.createElement("div");
+      stdRow.className = "std-row";
+      stdRow.append(
+        document.createTextNode("Standard: "),
+        formatPill("standard", stdStatus),
+      );
+      li.append(stdRow);
+    }
     const score = document.createElement("span");
     score.className = "score";
     score.textContent = String(c.score);
@@ -95,6 +138,7 @@ async function send(text) {
         model,
         messages: history,
         use_rag: ragEl.checked,
+        standard_only: stdEl.checked,
       }),
     });
   } catch (e) {
