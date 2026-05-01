@@ -211,7 +211,14 @@ def parse_rules(path: Path) -> List[Tuple[str, str]]:
         start = m.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         body = text[start:end].strip()
-        if len(body) < 60:  # skip TOC-style stub entries
+        # Drop bare table-of-contents stubs ("100. General") but keep real
+        # short rules like "702.21a Lifelink is a static ability."
+        if len(body) < 25:
+            continue
+        first_line = body.split("\n", 1)[0]
+        if len(body) <= len(first_line) + 1 and not first_line.rstrip().endswith(
+            (".", "!", "?", ":", ")")
+        ):
             continue
         raw.append((m.group(1), body))
     by_id: dict = {}
